@@ -1,22 +1,29 @@
 package com.sky.service.impl;
 
 import com.fasterxml.jackson.databind.JsonSerializable.Base;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
+import com.sky.dto.EmployeePageQueryDTO;
 import com.sky.entity.Employee;
+import com.sky.entity.Employee.EmployeeBuilder;
 import com.sky.exception.AccountLockedException;
 import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
 import com.sky.mapper.EmployeeMapper;
+import com.sky.result.PageResult;
 import com.sky.service.EmployeeService;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
+import org.aspectj.apache.bcel.generic.RET;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -78,13 +85,50 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setPassword(password);
 
         // 设置创建时间和更新时间
-        employee.setCreateTime(LocalDateTime.now());
-        employee.setUpdateTime(LocalDateTime.now());
+        // employee.setCreateTime(LocalDateTime.now());
+        // employee.setUpdateTime(LocalDateTime.now());
         // 设置创建人和修改人（通过动态方式获得当前已登录用户的id） 可以通过token解析出当前用户的id
         Long currentId = BaseContext.getCurrentId();
         employee.setCreateUser(currentId); //long型数据 后面需要加一个L
         employee.setUpdateUser(currentId);
         employeeMapper.insert(employee);
+    }
+
+    @Override
+    public PageResult pageQuery(EmployeePageQueryDTO employeePageQueryDTO) {
+        // startPage(int pageNum, int pageSize) 参数 页数 和每页显示条数 
+        PageHelper.startPage(employeePageQueryDTO.getPage(), employeePageQueryDTO.getPageSize());
+        Page<Employee> page = employeeMapper.pageQuery(employeePageQueryDTO);
+        long total = page.getTotal();
+         //总记录数
+        List<Employee> records = page.getResult(); //当前页结果集
+        PageResult pageResult = new PageResult(total, records);
+        return pageResult;
+       
+    }
+
+    @Override
+    public void startOrStop(Integer status, Long id) {
+       Employee employee = Employee.builder().status(status).id(id).build(); //
+        employeeMapper.update(employee);
+    }
+
+    // 根据id查询用户信息
+    @Override
+    public Employee getById(Long id) {
+        Employee employee = employeeMapper.getById(id);
+        employee.setPassword("123456");
+        return employee;    
+    }
+
+    // 更新(编辑)员工信息
+    @Override
+    public void update(EmployeeDTO employeeDTO) {
+        Employee employee = new Employee();
+        BeanUtils.copyProperties(employeeDTO, employee);
+        // employee.setUpdateTime(LocalDateTime.now());
+        // employee.setUpdateUser(BaseContext.getCurrentId()); // BaseContext可以获得当前线程的id
+        employeeMapper.update(employee);
     }
 
 }
